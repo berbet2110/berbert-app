@@ -523,7 +523,7 @@ setInterval(async () => {
 
 // Avisa quando uma versão nova do sistema foi publicada, para ninguém usar uma versão antiga
 // (uma aba aberta continua com a versão de quando foi carregada).
-const VERSAO_APP = '2026-11-06.1';
+const VERSAO_APP = '2026-11-21.1';
 async function verificarVersao() {
   try {
     const r = await fetch('versao.json', { cache: 'no-store' });
@@ -766,6 +766,7 @@ function clientes(el) {
       <div class="acoes">
       ${DB.perfil().admin ? '<button class="btn sec perigo-texto" id="excluir-tudo">Excluir tudo</button>' : ''}
       <button class="btn sec" id="importar">Importar planilha</button>
+      ${DB.perfil().admin ? '<button class="btn sec" id="importar-anot">Importar anotações</button>' : ''}
       <button class="btn" id="novo">+ Novo cliente</button></div></div>
     <div class="filtros">
       <label>Filtrar por<select id="f-campo">${opcoes(FILTROS_CLIENTE.map(([v, r]) => [v, r]), estadoClientes.campo)}</select></label>
@@ -839,6 +840,7 @@ function clientes(el) {
   ligarPaginacao($('#lista', el), estadoClientes, desenhar);
   $('#novo', el).addEventListener('click', () => abrirCliente('novo'));
   $('#importar', el).addEventListener('click', importarClientes);
+  if (DB.perfil().admin) $('#importar-anot', el).addEventListener('click', () => importarAnotacoesPlanilha(() => clientes(el)));
   if (DB.perfil().admin) $('#excluir-tudo', el).addEventListener('click', () => excluirTudo('clientes'));
   $('#lista', el).addEventListener('click', (e) => {
     const b = e.target.closest('[data-acao]');

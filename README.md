@@ -6,7 +6,7 @@ armazenamento de fotos e regras de acesso por usuário).
 ## Módulos
 
 - **Painel**: resumo do dia, serviços que mais saem, contas a pagar e a receber.
-- **Clientes**: cadastro, ficha com histórico e anotações, importação de planilha, junção de repetidos.
+- **Clientes**: cadastro, ficha com histórico e anotações, importação de planilha, importação das anotações do Lira, junção de repetidos.
 - **Agenda** de atendimentos.
 - **Ordens de Serviço**: situação Em Execução / Finalizado / Cancelado, impressão FAES, link para o técnico
   preencher pelo celular (`os.html`) com assinatura do cliente, importação de planilha.

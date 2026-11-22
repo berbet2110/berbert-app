@@ -10,6 +10,8 @@ function planoAnotacoes(linhas, clientes, norm) {
   const cab = linhas[0].map(norm);
   const col = (...nomes) => cab.findIndex((h) => nomes.includes(h));
   const iCod = col('codigo', 'cod'), iObs = col('observacao', 'observacoes', 'obs'), iAn = col('anotacoes', 'anotacao');
+  // Planilha com uma anotação por linha: a data vem numa coluna própria.
+  const iData = col('data da anotacao', 'data', 'cadastro');
   if (iCod < 0 || (iObs < 0 && iAn < 0)) throw new Error('A planilha precisa das colunas Código e Anotações (ou Observação).');
 
   // Mesma linha repetida no arquivo (código cadastrado duas vezes no Lira): junta as anotações sem repetir.
@@ -21,7 +23,8 @@ function planoAnotacoes(linhas, clientes, norm) {
     for (const parte of String(iAn >= 0 ? l[iAn] || '' : '').split(' || ')) {
       const m = parte.trim().match(/^\[(\d{2})\/(\d{2})\/(\d{4})\]\s*([\s\S]*)$/);
       const texto = (m ? m[4] : parte).trim();
-      if (texto) reg.notas.set(norm(texto), { texto, data: m ? `${m[3]}-${m[2]}-${m[1]}` : '' });
+      const d = !m && iData >= 0 && String(l[iData] || '').match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+      if (texto) reg.notas.set(norm(texto), { texto, data: m ? `${m[3]}-${m[2]}-${m[1]}` : d ? `${d[3]}-${d[2]}-${d[1]}` : '' });
     }
     const obs = String(iObs >= 0 ? l[iObs] || '' : '').trim();
     if (obs) reg.obs.add(obs);

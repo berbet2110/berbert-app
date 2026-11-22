@@ -1,6 +1,7 @@
-/* Importação de anotações de clientes vindas do sistema anterior (Lira).
+/* Importação das observações e anotações de clientes vindas do sistema anterior (Lira).
    A planilha tem uma linha por cliente com as colunas Código, Observação e Anotações; cada anotação vem
-   como "[dd/mm/aaaa] texto", separadas por " || ". As anotações entram na ficha do cliente com o mesmo código. */
+   como "[dd/mm/aaaa] texto", separadas por " || ". A observação vai inteira para o campo Observações e as
+   anotações para a aba Anotações do cliente com o mesmo código. */
 
 const AUTOR_LIRA = 'Importado do Lira';
 
@@ -38,7 +39,7 @@ function planoAnotacoes(linhas, clientes, norm) {
   const novoId = () => Date.now().toString(36) + (seq++).toString(36) + Math.random().toString(36).slice(2, 6);
   // Mesmas palavras em outra ordem contam como a mesma anotação.
   const chave = (t) => norm(t).replace(/[*()]/g, ' ').split(/\s+/).filter(Boolean).sort().join(' ');
-  const r = { atualizar: [], novas: 0, jaExistem: 0, encontrados: 0, semAnotacao: 0, naoEncontrados: [], repetidos: [] };
+  const r = { atualizar: [], novas: 0, jaExistem: 0, observacoes: 0, obsJaExistem: 0, encontrados: 0, semAnotacao: 0, naoEncontrados: [], repetidos: [] };
   for (const reg of porCodigo.values()) {
     if (!reg.notas.size && !reg.obs.size) { r.semAnotacao++; continue; }
     const achados = clientesPorCodigo.get(norm(reg.cod)) || [];
@@ -57,31 +58,28 @@ function planoAnotacoes(linhas, clientes, norm) {
       novas.push({ id: novoId(), texto, ativa: true, criadoEm: data ? `${data}T12:00:00.000Z` : agora, autor: AUTOR_LIRA });
     };
     for (const n of reg.notas.values()) incluir(n.texto, n.data);
-    // A observação do cadastro costuma ser um histórico com uma data por linha: cada linha datada vira uma
-    // anotação com aquela data; o resto (sem data) entra junto numa anotação só.
-    for (const obs of reg.obs) {
-      const semData = [];
-      for (const linha of obs.split(/\n+/).map((x) => x.trim()).filter(Boolean)) {
-        const m = linha.match(/^(\d{2})\/(\d{2})\/(\d{4})\b/);
-        if (m) incluir(linha, `${m[3]}-${m[2]}-${m[1]}`);
-        else if (!existentes.has(chave(linha))) semData.push(linha);
-      }
-      if (semData.length) incluir('Observação do cadastro no Lira: ' + semData.join('\n'), '');
+    // A observação entra inteira no campo Observações; se o cliente já tem outra, fica abaixo dela.
+    let obs = c.obs || '';
+    for (const o of reg.obs) {
+      if (norm(obs).includes(norm(o))) { r.obsJaExistem++; continue; }
+      obs = obs.trim() ? `${obs.trim()}\n\n${o}` : o;
+      r.observacoes++;
     }
-    if (novas.length) {
+    if (novas.length || obs !== (c.obs || '')) {
       r.novas += novas.length;
-      r.atualizar.push({ id: c.id, anotacoes: lista.concat(novas) });
+      r.atualizar.push({ id: c.id, ...(novas.length ? { anotacoes: lista.concat(novas) } : {}), ...(obs !== (c.obs || '') ? { obs } : {}) });
     }
   }
   return r;
 }
 
 function importarAnotacoesPlanilha(aoTerminar) {
-  abrirModal('Importar anotações do Lira', `
+  abrirModal('Importar observações e anotações do Lira', `
     <div class="importacao">
       <p>Escolha a planilha <b>.csv</b> com as descrições dos clientes do Lira (colunas Código, Observação e Anotações).
         Cada linha é ligada ao cliente com o <b>mesmo código</b>.</p>
-      <p class="ajuda">Anotações que o cliente já tem não são repetidas, então dá para importar o mesmo arquivo de novo sem duplicar.</p>
+      <p class="ajuda">A observação vai para o campo <b>Observações</b> da ficha e as anotações para a aba <b>Anotações</b>.
+        O que o cliente já tem não é repetido, então dá para importar o mesmo arquivo de novo sem duplicar.</p>
       <div class="acoes"><label class="btn">Escolher arquivo .csv<input type="file" id="arquivo-anot" accept=".csv,text/csv,.txt" hidden></label></div>
       <div id="etapa-anot"></div>
     </div>`, (raiz) => {
@@ -96,8 +94,10 @@ function importarAnotacoesPlanilha(aoTerminar) {
       const lista = (cods) => esc(cods.slice(0, 30).join(', ') + (cods.length > 30 ? ` e mais ${cods.length - 30}` : ''));
       caixa.innerHTML = `
         <div class="resumo-importacao">
-          <span class="tag verde">${r.novas.toLocaleString('pt-BR')} anotações novas em ${r.atualizar.length.toLocaleString('pt-BR')} clientes</span>
-          ${r.jaExistem ? `<span class="tag cinza">${r.jaExistem.toLocaleString('pt-BR')} já estavam cadastradas</span>` : ''}
+          <span class="tag verde">${r.observacoes.toLocaleString('pt-BR')} observações</span>
+          <span class="tag verde">${r.novas.toLocaleString('pt-BR')} anotações novas</span>
+          <span class="tag cinza">${r.atualizar.length.toLocaleString('pt-BR')} clientes atualizados</span>
+          ${r.jaExistem + r.obsJaExistem ? `<span class="tag cinza">${(r.jaExistem + r.obsJaExistem).toLocaleString('pt-BR')} já estavam cadastradas</span>` : ''}
           ${r.naoEncontrados.length ? `<span class="tag amarelo">${r.naoEncontrados.length} códigos sem cliente no sistema</span>` : ''}
           ${r.repetidos.length ? `<span class="tag vermelho">${r.repetidos.length} códigos usados por mais de um cliente</span>` : ''}
         </div>
@@ -106,12 +106,12 @@ function importarAnotacoesPlanilha(aoTerminar) {
           ${r.repetidos.length ? `<li class="atencao">Códigos que estão em mais de um cliente aqui (ficam de fora; confira e importe à mão): ${lista(r.repetidos)}</li>` : ''}
         </ul>
         <div class="form-acoes"><button type="button" class="btn sec" data-cancelar>Cancelar</button>
-          <button type="button" class="btn" id="confirmar-anot" ${r.atualizar.length ? '' : 'disabled'}>Importar anotações</button></div>`;
+          <button type="button" class="btn" id="confirmar-anot" ${r.atualizar.length ? '' : 'disabled'}>Importar</button></div>`;
       $('[data-cancelar]', caixa).addEventListener('click', fecharModal);
       $('#confirmar-anot', caixa).addEventListener('click', (ev) => enviando(ev.target, async () => {
         await DB.atualizarVarios('clientes', r.atualizar, (feito, total) => { ev.target.textContent = `Gravando ${feito} de ${total}...`; });
         fecharModal();
-        avisar(`${r.novas.toLocaleString('pt-BR')} anotações importadas em ${r.atualizar.length.toLocaleString('pt-BR')} clientes.`);
+        avisar(`Importado: ${r.observacoes.toLocaleString('pt-BR')} observações e ${r.novas.toLocaleString('pt-BR')} anotações em ${r.atualizar.length.toLocaleString('pt-BR')} clientes.`);
         aoTerminar();
       }));
     });

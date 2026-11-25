@@ -499,3 +499,4 @@ td.num, th.num { text-align: right; }
 /* A assinatura e os documentos para impressão continuam brancos. */
 [data-tema="escuro"] .assinatura-caixa, [data-tema="escuro"] .assinatura-ver { background: #fff; }
 [data-tema="escuro"] .doc, [data-tema="escuro"] .pdf-temporario { background: #fff; color: #000; }
+.form textarea[name="obs"] { min-height: 180px; }

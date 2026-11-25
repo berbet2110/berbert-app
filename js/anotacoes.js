@@ -76,14 +76,62 @@ function planoAnotacoes(linhas, clientes, norm) {
   return r;
 }
 
+// Dados completos do Lira (arquivo .json): cada registro traz o código, os campos da ficha, a observação e as
+// anotações. Campos vazios no Lira não apagam o que já está no sistema; código sem cliente aqui vira cliente novo.
+function planoLira(registros, clientes, norm) {
+  const porCodigo = new Map();
+  for (const c of clientes) {
+    const cod = norm(c.codigo);
+    if (cod) porCodigo.set(cod, [...(porCodigo.get(cod) || []), c]);
+  }
+  const agora = new Date().toISOString();
+  let seq = 0;
+  const novoId = () => Date.now().toString(36) + (seq++).toString(36) + Math.random().toString(36).slice(2, 6);
+  const chave = (t) => norm(t).replace(/[*()]/g, ' ').split(/\s+/).filter(Boolean).sort().join(' ');
+  const nota = (n) => ({ id: novoId(), texto: n.texto, ativa: true, criadoEm: n.data ? `${n.data}T12:00:00.000Z` : agora, autor: AUTOR_LIRA });
+  const r = { atualizar: [], criar: [], novas: 0, jaExistem: 0, observacoes: 0, campos: 0, repetidos: [] };
+  for (const reg of registros) {
+    const achados = porCodigo.get(norm(reg.codigo)) || [];
+    if (achados.length > 1) { r.repetidos.push(reg.codigo); continue; }
+    if (!achados.length) {
+      const anotacoes = (reg.anotacoes || []).map(nota);
+      r.novas += anotacoes.length;
+      if (reg.obs) r.observacoes++;
+      r.criar.push({ ...reg.campos, codigo: String(reg.codigo), obs: reg.obs || '', anotacoes });
+      continue;
+    }
+    const c = achados[0];
+    const mud = {};
+    for (const [k, v] of Object.entries(reg.campos || {})) {
+      if (v === '' || v === null || v === undefined) continue;
+      if (c[k] !== v) { mud[k] = v; r.campos++; }
+    }
+    let obs = c.obs || '';
+    if (reg.obs && !norm(obs).includes(norm(reg.obs))) { obs = obs.trim() ? `${obs.trim()}\n\n${reg.obs}` : reg.obs; mud.obs = obs; r.observacoes++; }
+    const lista = (c.anotacoes || []).slice();
+    const existentes = new Set(lista.map((a) => chave(a.texto)));
+    const novas = [];
+    for (const n of reg.anotacoes || []) {
+      const k = chave(n.texto);
+      if (!k) continue;
+      if (existentes.has(k)) { r.jaExistem++; continue; }
+      existentes.add(k);
+      novas.push(nota(n));
+    }
+    if (novas.length) { mud.anotacoes = lista.concat(novas); r.novas += novas.length; }
+    if (Object.keys(mud).length) r.atualizar.push({ id: c.id, ...mud });
+  }
+  return r;
+}
+
 function importarAnotacoesPlanilha(aoTerminar) {
-  abrirModal('Importar observações e anotações do Lira', `
+  abrirModal('Importar dados do Lira', `
     <div class="importacao">
-      <p>Escolha a planilha <b>.csv</b> com as descrições dos clientes do Lira (colunas Código, Observação e Anotações).
-        Cada linha é ligada ao cliente com o <b>mesmo código</b>.</p>
+      <p>Escolha o arquivo <b>lira-clientes.json</b> (dados completos) ou uma planilha <b>.csv</b> com Código, Observação e Anotações.
+        Cada cliente é ligado pelo <b>mesmo código</b>.</p>
       <p class="ajuda">A observação vai para o campo <b>Observações</b> da ficha e as anotações para a aba <b>Anotações</b>.
         O que o cliente já tem não é repetido, então dá para importar o mesmo arquivo de novo sem duplicar.</p>
-      <div class="acoes"><label class="btn">Escolher arquivo .csv<input type="file" id="arquivo-anot" accept=".csv,text/csv,.txt" hidden></label></div>
+      <div class="acoes"><label class="btn">Escolher arquivo .csv<input type="file" id="arquivo-anot" accept=".json,.csv,text/csv,.txt" hidden></label></div>
       <div id="etapa-anot"></div>
     </div>`, (raiz) => {
     $('#arquivo-anot', raiz).addEventListener('change', async (e) => {
@@ -92,7 +140,9 @@ function importarAnotacoesPlanilha(aoTerminar) {
       const caixa = $('#etapa-anot', raiz);
       let r;
       try {
-        r = planoAnotacoes(lerCSV(await lerArquivoTexto(arq)), DB.listar('clientes'), normalizar);
+        const texto = await lerArquivoTexto(arq);
+        r = /\.json$/i.test(arq.name) ? planoLira(JSON.parse(texto), DB.listar('clientes'), normalizar)
+          : { criar: [], campos: 0, ...planoAnotacoes(lerCSV(texto), DB.listar('clientes'), normalizar) };
       } catch (err) { caixa.innerHTML = `<p class="erro">${esc(err.message)}</p>`; return; }
       const lista = (cods) => esc(cods.slice(0, 30).join(', ') + (cods.length > 30 ? ` e mais ${cods.length - 30}` : ''));
       caixa.innerHTML = `
@@ -100,6 +150,8 @@ function importarAnotacoesPlanilha(aoTerminar) {
           <span class="tag verde">${r.observacoes.toLocaleString('pt-BR')} observações</span>
           <span class="tag verde">${r.novas.toLocaleString('pt-BR')} anotações novas</span>
           <span class="tag cinza">${r.atualizar.length.toLocaleString('pt-BR')} clientes atualizados</span>
+          ${r.campos ? `<span class="tag cinza">${r.campos.toLocaleString('pt-BR')} campos da ficha atualizados</span>` : ''}
+          ${r.criar.length ? `<span class="tag laranja">${r.criar.length.toLocaleString('pt-BR')} clientes novos</span>` : ''}
           ${r.jaExistem + r.obsJaExistem ? `<span class="tag cinza">${(r.jaExistem + r.obsJaExistem).toLocaleString('pt-BR')} já estavam cadastradas</span>` : ''}
           ${r.naoEncontrados.length ? `<span class="tag amarelo">${r.naoEncontrados.length} códigos sem cliente no sistema</span>` : ''}
           ${r.repetidos.length ? `<span class="tag vermelho">${r.repetidos.length} códigos usados por mais de um cliente</span>` : ''}
@@ -109,12 +161,13 @@ function importarAnotacoesPlanilha(aoTerminar) {
           ${r.repetidos.length ? `<li class="atencao">Códigos que estão em mais de um cliente aqui (ficam de fora; confira e importe à mão): ${lista(r.repetidos)}</li>` : ''}
         </ul>
         <div class="form-acoes"><button type="button" class="btn sec" data-cancelar>Cancelar</button>
-          <button type="button" class="btn" id="confirmar-anot" ${r.atualizar.length ? '' : 'disabled'}>Importar</button></div>`;
+          <button type="button" class="btn" id="confirmar-anot" ${r.atualizar.length || r.criar.length ? '' : 'disabled'}>Importar</button></div>`;
       $('[data-cancelar]', caixa).addEventListener('click', fecharModal);
       $('#confirmar-anot', caixa).addEventListener('click', (ev) => enviando(ev.target, async () => {
         await DB.atualizarVarios('clientes', r.atualizar, (feito, total) => { ev.target.textContent = `Gravando ${feito} de ${total}...`; });
+        if (r.criar.length) await DB.adicionarVarios('clientes', r.criar, (feito, total) => { ev.target.textContent = `Criando ${feito} de ${total}...`; });
         fecharModal();
-        avisar(`Importado: ${r.observacoes.toLocaleString('pt-BR')} observações e ${r.novas.toLocaleString('pt-BR')} anotações em ${r.atualizar.length.toLocaleString('pt-BR')} clientes.`);
+        avisar(`Importado: ${r.atualizar.length.toLocaleString('pt-BR')} clientes atualizados${r.criar.length ? `, ${r.criar.length} novos` : ''}, ${r.observacoes.toLocaleString('pt-BR')} observações e ${r.novas.toLocaleString('pt-BR')} anotações.`);
         aoTerminar();
       }));
     });

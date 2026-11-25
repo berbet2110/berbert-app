@@ -523,7 +523,7 @@ setInterval(async () => {
 
 // Avisa quando uma versão nova do sistema foi publicada, para ninguém usar uma versão antiga
 // (uma aba aberta continua com a versão de quando foi carregada).
-const VERSAO_APP = '2026-11-22.1';
+const VERSAO_APP = '2026-11-25.1';
 async function verificarVersao() {
   try {
     const r = await fetch('versao.json', { cache: 'no-store' });
@@ -766,7 +766,7 @@ function clientes(el) {
       <div class="acoes">
       ${DB.perfil().admin ? '<button class="btn sec perigo-texto" id="excluir-tudo">Excluir tudo</button>' : ''}
       <button class="btn sec" id="importar">Importar planilha</button>
-      ${DB.perfil().admin ? '<button class="btn sec" id="importar-anot">Importar observações (Lira)</button>' : ''}
+      ${DB.perfil().admin ? '<button class="btn sec" id="importar-anot">Importar dados do Lira</button>' : ''}
       <button class="btn" id="novo">+ Novo cliente</button></div></div>
     <div class="filtros">
       <label>Filtrar por<select id="f-campo">${opcoes(FILTROS_CLIENTE.map(([v, r]) => [v, r]), estadoClientes.campo)}</select></label>
@@ -1199,32 +1199,49 @@ function etapaMapeamento(el, nomeArquivo, linhas) {
   el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+const TIPOS_CADASTRO = ['Cliente', 'Fornecedor', 'Transportadora', 'Profissional', 'Técnico'];
 function camposCliente(c) {
   return `
       ${campo('Código', 'codigo', c.codigo)}
       <label class="check"><input type="checkbox" name="ativo" ${clienteAtivo(c) ? 'checked' : ''}> Cliente ativo</label>
+      <label>Tipo de cadastro<select name="tipoCadastro">${opcoes(TIPOS_CADASTRO.map((t) => [t, t]), c.tipoCadastro || 'Cliente')}</select></label>
+      <label>Pessoa<select name="tipo">${opcoes([['PF', 'Pessoa física'], ['PJ', 'Pessoa jurídica']], c.tipo)}</select></label>
+      ${campo('CPF / CNPJ', 'documento', c.documento)}
+      ${campo('RG / Inscrição estadual', 'ie', c.ie)}
+      <label>Contribuinte ICMS<select name="contribuinte">${opcoes([['nao', 'Não contribuinte'], ['sim', 'Contribuinte']], c.contribuinte || 'nao')}</select></label>
+      ${campo('Data de nascimento', 'nascimento', c.nascimento, 'date')}
       ${campo('Razão social / Nome *', 'nome', c.nome, 'text', 'required full')}
       ${campo('Nome fantasia', 'fantasia', c.fantasia, 'text', 'full')}
-      <label>Tipo<select name="tipo">${opcoes([['PF', 'Pessoa física'], ['PJ', 'Empresa']], c.tipo)}</select></label>
-      ${campo('CPF / CNPJ', 'documento', c.documento)}
-      ${campo('I.E. / R.G.', 'ie', c.ie)}
-      ${campo('Telefone / WhatsApp', 'telefone', c.telefone, 'tel')}
+      ${campo('Celular / WhatsApp', 'telefone', c.telefone, 'tel')}
+      ${campo('Telefone', 'telefoneFixo', c.telefoneFixo, 'tel')}
       ${campo('E-mail', 'email', c.email, 'email')}
-      ${campo('Endereço', 'endereco', c.endereco, 'text', 'full')}
-      ${campo('Bairro', 'bairro', c.bairro)}
-      ${campo('Cidade', 'cidade', c.cidade)}
-      ${campo('CEP', 'cep', c.cep)}
-      ${campo('Contato responsável', 'contato', c.contato)}
+      ${campo('Contato / responsável', 'contato', c.contato)}
+      ${campo('Telefone do contato', 'telContato', c.telContato, 'tel')}
+      ${campo('CPF do contato', 'cpfContato', c.cpfContato)}
+      ${campo('Centro de custo', 'centroCusto', c.centroCusto)}
       ${campo('Tipo de imóvel', 'imovel', c.imovel, 'text', 'placeholder="Casa, apartamento, restaurante..."')}
       ${campo('Ramo de atividade', 'ramo', c.ramo, 'text', 'full placeholder="Ex.: Restaurante, indústria, contrato de julho/2025 a junho/2026..."')}
+      <h3 class="full secao">Endereço</h3>
+      ${campo('CEP', 'cep', c.cep)}
+      ${campo('Código país', 'codigoPais', c.codigoPais || '1058')}
+      ${campo('Logradouro', 'logradouro', c.logradouro ?? c.endereco, 'text', 'full')}
+      ${campo('Tipo logradouro', 'tipoLogradouro', c.tipoLogradouro, 'text', 'placeholder="AV, RUA..."')}
+      ${campo('Número', 'numero', c.numero)}
+      ${campo('Complemento', 'complemento', c.complemento)}
+      ${campo('Bairro', 'bairro', c.bairro)}
+      ${campo('Cidade', 'cidade', c.cidade)}
+      ${campo('Código IBGE', 'ibge', c.ibge)}
       ${campo('Observações', 'obs', c.obs, 'textarea', 'full')}`;
 }
+// Endereço numa linha só (usado nas impressões, laudos e na página do técnico).
+const montarEndereco = (c) => [c.logradouro, c.numero].filter(Boolean).join(', ') + (c.complemento ? ' - ' + c.complemento : '');
 // Valida e grava o cliente do formulário. Devolve o cliente salvo, ou null se algo impedir.
 function salvarClienteDoForm(form, id) {
   const dados = lerForm(form);
   const cod = normalizar(dados.codigo);
   const outro = cod && DB.listar('clientes').find((x) => x.id !== id && normalizar(x.codigo) === cod);
   if (outro) { avisar(`O código ${dados.codigo} já é do cliente ${outro.nome}.`, 'erro'); form.codigo.focus(); return null; }
+  dados.endereco = montarEndereco(dados);
   return DB.salvarItem('clientes', { ...dados, id: id || undefined });
 }
 

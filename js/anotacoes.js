@@ -94,6 +94,7 @@ function planoLira(registros, clientes, norm) {
     const achados = porCodigo.get(norm(reg.codigo)) || [];
     if (achados.length > 1) { r.repetidos.push(reg.codigo); continue; }
     if (!achados.length) {
+      if (!(reg.campos || {}).nome) continue;
       const anotacoes = (reg.anotacoes || []).map(nota);
       r.novas += anotacoes.length;
       if (reg.obs) r.observacoes++;

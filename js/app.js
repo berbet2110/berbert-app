@@ -523,7 +523,7 @@ setInterval(async () => {
 
 // Avisa quando uma versão nova do sistema foi publicada, para ninguém usar uma versão antiga
 // (uma aba aberta continua com a versão de quando foi carregada).
-const VERSAO_APP = '2026-11-25.1';
+const VERSAO_APP = '2026-11-25.2';
 async function verificarVersao() {
   try {
     const r = await fetch('versao.json', { cache: 'no-store' });
@@ -802,8 +802,10 @@ function clientes(el) {
     });
   }
   const desenhar = () => {
+    // Pelo código, do menor para o maior; quem não tem código fica no fim, por nome.
+    const cod = (c) => String(c.codigo || '').trim();
     const todos = filtrarClientes(DB.listar('clientes'), estadoClientes)
-      .sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+      .sort((a, b) => (!cod(a) - !cod(b)) || cod(a).localeCompare(cod(b), 'pt-BR', { numeric: true }) || (a.nome || '').localeCompare(b.nome || ''));
     const { itens: lista, html: rodape } = paginar(todos, estadoClientes);
     guardarEstado('clientes', estadoClientes);
     $('#lista', el).innerHTML = lista.length ? `<div class="tabela-wrap"><table><thead><tr><th>Cód.</th><th>Razão social / Nome</th><th>Telefone</th><th>Bairro / Cidade</th><th>Tipo</th><th>Ações</th></tr></thead><tbody>

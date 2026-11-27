@@ -183,7 +183,7 @@ function abrirModal(titulo, html, aoMontar) {
   $('#modal-corpo').innerHTML = html;
   $('#modal').hidden = false;
   if (aoMontar) aoMontar($('#modal-corpo'));
-  const primeiro = $('#modal-corpo input:not([type=checkbox]):not([disabled]), #modal-corpo select');
+  const primeiro = $('#modal-corpo input:not([type=checkbox]):not([type=hidden]):not([disabled]), #modal-corpo select');
   if (primeiro) primeiro.focus();
 }
 function fecharModal() {
@@ -523,7 +523,7 @@ setInterval(async () => {
 
 // Avisa quando uma versão nova do sistema foi publicada, para ninguém usar uma versão antiga
 // (uma aba aberta continua com a versão de quando foi carregada).
-const VERSAO_APP = '2026-11-27.1';
+const VERSAO_APP = '2026-11-27.2';
 async function verificarVersao() {
   try {
     const r = await fetch('versao.json', { cache: 'no-store' });

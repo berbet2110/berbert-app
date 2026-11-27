@@ -525,3 +525,12 @@ td.num, th.num { text-align: right; }
 .cert-empresa { width: 74mm; font-size: 9pt; line-height: 1.35; }
 .cert-site { margin-bottom: 4mm; }
 @media print { body.imprimindo #impressao .cert-pg { page-break-after: avoid; } }
+
+/* Campos de data e mês no padrão brasileiro (js/datas.js) */
+.campo-data { position: relative; display: flex; align-items: stretch; width: 100%; min-width: 0; }
+.campo-data > input[type=text] { flex: 1; min-width: 0; width: 100%; padding-right: 36px; }
+.campo-data-btn { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); background: none; border: 0; color: var(--suave);
+  cursor: pointer; padding: 5px; border-radius: 6px; display: flex; }
+.campo-data-btn:hover { color: var(--primaria); background: var(--fundo); }
+.campo-data-btn:disabled { display: none; }
+.campo-data-seletor { position: absolute; right: 0; bottom: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; border: 0; padding: 0; }

@@ -16,6 +16,30 @@ const RECOMENDACOES_DEDET = [
 ];
 const GARANTIAS = [[30, '30 dias'], [60, '60 dias'], [90, '90 dias'], [120, '120 dias'], [180, '6 meses'], [365, '1 ano']];
 
+// Certificado no modelo Berbert (folha deitada). Estes são os textos iniciais; o administrador pode salvar outros como padrão.
+const CERT_PADRAO = {
+  licencas: 'Nº LICENÇA SANITÁRIA 238/2024\nNº LICENÇA SANITÁRIA AMBIENTAL 290638',
+  abertura: 'Certificamos para os devidos fins que a empresa contratada DEDETIZADORA BERBERT LTDA-ME executou nesta unidade os serviços descritos abaixo.',
+  servicos: "Serviço de Limpeza de Caixas D'água\nDedetização e Desratização",
+  normas: 'Nosso trabalho segue as normas do sistema de qualidade aparente, GMP, ISO e HACCP com produtos licenciados pela divisão nacional de vigilância e saneantes domissanitários, conforme legislação vigente.',
+  produtos: [
+    { grupo: 'Piretrinas e piretróides', nome: 'Lamdba Cyhalothryn', antidoto: 'Anti-histamínico e tratamento assintomático', registro: '3.0119.6626', emergencia: '0800.7044304' },
+    { grupo: 'Cumarínico', nome: 'For-Rat', antidoto: 'Vitamina K1 e tratamento assintomático', registro: '33308.0002', emergencia: '0800.7226001' },
+    { grupo: 'Pirazol', nome: 'Cavaleiro SC', antidoto: 'Tratamento assintomático', registro: '33308.0017', emergencia: '0800.7226001' },
+    { grupo: 'Flocomagen', nome: 'Storm Compressed Block', antidoto: 'Vitamina K1 e tratamento assintomático', registro: '3.0404.0036', emergencia: '0800.192-500' },
+    { grupo: 'Hipoclorito de Sódio', nome: 'Água sanitária', antidoto: 'Tratamento assintomático', registro: '3.011392-06', emergencia: '0800.7226001' },
+  ],
+  responsavel: 'RICARDO MANOEL PEDROSO', cargo: 'Engenheiro Agrônomo | Responsável Técnico', registro: 'CREA PR 92.425/D',
+  site: 'berbertpestcontrol.com.br',
+  rodape: 'CNPJ:04.608.408/0001-29 | IE 90487454-04\nRua Panambi, 3166 Jardim Cidade Alta II\nCampo Mourão - PR CEP 87303-230',
+};
+const COLS_CERT = [
+  { nome: 'grupo', rotulo: 'Grupo químico', largura: '20%' }, { nome: 'nome', rotulo: 'Nome comum', largura: '20%' },
+  { nome: 'antidoto', rotulo: 'Antídoto', largura: '28%' }, { nome: 'registro', rotulo: 'Reg. Ministério da Saúde' },
+  { nome: 'emergencia', rotulo: 'Emergência' },
+];
+const certPadrao = () => ({ ...CERT_PADRAO, ...(DB.config().certificado || {}) });
+
 const TIPOS_RESERV = ["Caixa d'água", 'Cisterna', 'Reservatório elevado', 'Reservatório enterrado'];
 const MATERIAIS_RESERV = ['Polietileno', 'Fibra de vidro', 'Concreto', 'Fibrocimento (amianto)', 'Inox', 'Metálico'];
 const CAPACIDADES = [250, 310, 500, 750, 1000, 1500, 2000, 3000, 5000, 7500, 10000, 15000, 20000, 25000, 30000, 40000, 50000];
@@ -73,20 +97,22 @@ function formLaudo(id, padrao = {}) {
   padraoNovoLaudo = padrao;
   irPara('laudo/' + (id || 'novo'));
 }
-const validadeLaudo = (l) => (l.tipo === 'caixa' ? (l.validadeMeses ? somarMeses(l.data, Number(l.validadeMeses)) : '')
+const validadeLaudo = (l) => (l.tipo === 'certificado' ? l.vencimento || ''
+  : l.tipo === 'caixa' ? (l.validadeMeses ? somarMeses(l.data, Number(l.validadeMeses)) : '')
   : (l.garantiaDias ? somarDias(l.data, l.garantiaDias) : ''));
 
 function laudos(el) {
   const lista = DB.listar('laudos').sort((a, b) => b.numero - a.numero);
   el.innerHTML = `
     <div class="cabecalho"><h2>Laudos / Certificados</h2><div class="acoes">
-      <button class="btn" id="novo-caixa">+ Laudo de caixa d'água</button>
+      <button class="btn" id="novo-certificado">+ Certificado (modelo Berbert)</button>
+      <button class="btn sec" id="novo-caixa">+ Laudo de caixa d'água</button>
       <button class="btn sec" id="novo">+ Certificado de dedetização</button></div></div>
     <div class="cartao" style="padding:0">${lista.length ? `<div class="tabela-wrap"><table><thead><tr><th>Nº</th><th>Data</th><th>Cliente</th><th>Tipo / serviço</th><th>Validade</th><th>Ações</th></tr></thead><tbody>
       ${lista.map((l) => {
         const ate = validadeLaudo(l);
         return `<tr><td>${l.numero}</td><td>${dataBR(l.data)}</td><td>${esc(nomeCliente(l.clienteId))}</td>
-        <td>${l.tipo === 'caixa' ? `<span class="tag azul">Caixa d'água</span>${(l.fotos || []).length ? ` <span class="ajuda">${l.fotos.length} foto(s)</span>` : ''}` : esc(l.pragas)}</td>
+        <td>${l.tipo === 'certificado' ? `<span class="tag laranja">Certificado</span> ${esc(String(l.servicos || '').split('\n').filter(Boolean).join(', '))}` : l.tipo === 'caixa' ? `<span class="tag azul">Caixa d'água</span>${(l.fotos || []).length ? ` <span class="ajuda">${l.fotos.length} foto(s)</span>` : ''}` : esc(l.pragas)}</td>
         <td>${ate ? `${dataBR(ate)} ${ate < hojeISO() ? '<span class="tag cinza">vencida</span>' : '<span class="tag verde">vigente</span>'}` : '—'}</td>
         <td><div class="acoes">
           <button class="btn peq" data-acao="imprimir" data-id="${l.id}">Imprimir / PDF</button>
@@ -98,6 +124,7 @@ function laudos(el) {
     </tbody></table></div>` : '<div class="vazio">Nenhum laudo emitido.</div>'}</div>`;
   $('#novo', el).addEventListener('click', () => formLaudo(null));
   $('#novo-caixa', el).addEventListener('click', () => irPara('laudo/novo-caixa'));
+  $('#novo-certificado', el).addEventListener('click', () => irPara('laudo/novo-certificado'));
   el.querySelector('.cartao').addEventListener('click', async (e) => {
     const b = e.target.closest('[data-acao]');
     if (!b) return;
@@ -116,14 +143,15 @@ function laudos(el) {
 
 /* ---------- Página do laudo ---------- */
 function paginaLaudo(el, id) {
-  const novo = id === 'novo' || id === 'novo-caixa';
+  const novo = id === 'novo' || id === 'novo-caixa' || id === 'novo-certificado';
   const l = novo ? null : DB.obter('laudos', id);
   if (!novo && !l) {
     el.innerHTML = '<div class="cartao"><p>Laudo não encontrado.</p><button class="btn sec" id="voltar">Voltar</button></div>';
     $('#voltar', el).addEventListener('click', () => irPara('laudos'));
     return;
   }
-  if (id === 'novo-caixa' || (l && l.tipo === 'caixa')) formCaixa(el, l);
+  if (id === 'novo-certificado' || (l && l.tipo === 'certificado')) formCertificado(el, l);
+  else if (id === 'novo-caixa' || (l && l.tipo === 'caixa')) formCaixa(el, l);
   else formDedetizacao(el, l, novo ? padraoNovoLaudo : {});
   padraoNovoLaudo = {};
 }
@@ -200,6 +228,112 @@ function formDedetizacao(el, l, padrao) {
       irPara('laudos');
     });
   });
+}
+
+/* ---------- Certificado no modelo Berbert ---------- */
+function formCertificado(el, l) {
+  const p = certPadrao();
+  const hoje = hojeISO();
+  const x = l || { data: hoje, vencimento: somarMeses(hoje, 12), ...p };
+  el.innerHTML = `${topoLaudo(l ? `Certificado nº ${l.numero}` : 'Novo certificado', l)}
+    <form class="cartao form" id="form-cert">
+      ${campoCliente(x.clienteId)}
+      ${campo('Data de execução', 'data', x.data, 'date', 'required')}
+      ${campo('Data de vencimento', 'vencimento', x.vencimento, 'date')}
+      <h3 class="full secao">Contratante <small class="ajuda">(em branco usa os dados do cadastro do cliente)</small></h3>
+      ${campo('Nome / razão social', 'contratanteNome', x.contratanteNome, 'text', 'full')}
+      ${campo('CNPJ / CPF', 'contratanteDoc', x.contratanteDoc)}
+      ${campo('Endereço', 'contratanteEndereco', x.contratanteEndereco)}
+      <h3 class="full secao">Textos do certificado</h3>
+      ${campo('Texto de abertura', 'abertura', x.abertura, 'textarea', 'full')}
+      ${campo('Serviços executados (um por linha)', 'servicos', x.servicos, 'textarea', 'full')}
+      ${campo('Texto das normas', 'normas', x.normas, 'textarea', 'full')}
+      <div class="full secao-form"><b>Produtos (grupo químico, nome comum, antídoto, registro e emergência)</b>${editorLinhas(COLS_CERT, x.produtos || [])}</div>
+      <h3 class="full secao">Responsável técnico</h3>
+      ${campo('Nome', 'responsavel', x.responsavel)}
+      ${campo('Formação / cargo', 'cargo', x.cargo)}
+      ${campo('Registro (CREA, CRQ...)', 'registro', x.registro)}
+      <h3 class="full secao">Dados da empresa no certificado</h3>
+      ${campo('Licenças (topo da folha)', 'licencas', x.licencas, 'textarea', 'full')}
+      ${campo('Site', 'site', x.site)}
+      ${campo('Rodapé (CNPJ, IE e endereço)', 'rodape', x.rodape, 'textarea', 'full')}
+      ${DB.perfil().admin ? '<label class="check full"><input type="checkbox" name="salvarPadrao"> Usar estes textos, produtos e dados como padrão nos próximos certificados</label>' : ''}
+      <div class="form-acoes"><button type="button" class="btn sec" id="cancelar">Cancelar</button>
+        <button type="button" class="btn sec" id="previa">Ver como fica</button><button class="btn" id="salvar">Salvar</button></div>
+    </form>`;
+  const form = $('#form-cert', el);
+  ligarCampoCliente(el);
+  ligarLinhas(form, COLS_CERT);
+  $('#voltar', el).addEventListener('click', () => irPara('laudos'));
+  $('#cancelar', el).addEventListener('click', () => irPara('laudos'));
+  if (l) {
+    $('#imp-laudo', el).addEventListener('click', (e) => enviando(e.target, () => imprimirLaudo(DB.obter('laudos', l.id))));
+    $('#whats-laudo', el).addEventListener('click', (e) => enviarLaudoWhatsApp(DB.obter('laudos', l.id), e.target));
+  }
+  // Ao mudar a data de execução, o vencimento acompanha (um ano depois), a menos que já tenha sido mudado à mão.
+  let vencManual = Boolean(l) && l.vencimento !== somarMeses(l.data, 12);
+  form.vencimento.addEventListener('input', () => { vencManual = true; });
+  form.data.addEventListener('change', () => { if (!vencManual && form.data.value) form.vencimento.value = somarMeses(form.data.value, 12); });
+  const ler = () => {
+    const d = lerForm(form);
+    return { tipo: 'certificado', clienteId: d.clienteId, data: d.data, vencimento: d.vencimento,
+      contratanteNome: d.contratanteNome, contratanteDoc: d.contratanteDoc, contratanteEndereco: d.contratanteEndereco,
+      abertura: d.abertura, servicos: d.servicos, normas: d.normas, produtos: lerLinhas(form, COLS_CERT),
+      responsavel: d.responsavel, cargo: d.cargo, registro: d.registro, licencas: d.licencas, site: d.site, rodape: d.rodape,
+      salvarPadrao: d.salvarPadrao };
+  };
+  $('#previa', el).addEventListener('click', async () => imprimir(await documentoCertificado({ numero: l ? l.numero : '', ...ler() })));
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (!clienteValido(form)) return;
+    const { salvarPadrao, ...dados } = ler();
+    enviando($('#salvar', el), async () => {
+      if (salvarPadrao) {
+        const { licencas, abertura, servicos, normas, produtos, responsavel, cargo, registro, site, rodape } = dados;
+        await DB.salvarConfig({ certificado: { licencas, abertura, servicos, normas, produtos, responsavel, cargo, registro, site, rodape } });
+      }
+      await salvarLaudo(dados, l, l ? l.id : DB.novoId());
+      avisar('Certificado salvo.');
+      irPara('laudos');
+    });
+  });
+}
+// Data por extenso: "02 de Dezembro de 2023".
+const MESES_EXTENSO = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+const dataExtenso = (iso) => (iso ? `${iso.slice(8, 10)} de ${MESES_EXTENSO[Number(iso.slice(5, 7)) - 1]} de ${iso.slice(0, 4)}` : '');
+async function documentoCertificado(l) {
+  const cli = DB.obter('clientes', l.clienteId) || {};
+  const nome = l.contratanteNome || cli.nome || '';
+  const doc = l.contratanteDoc || (cli.documento ? `${cli.tipo === 'PF' ? 'CPF' : 'CNPJ'} ${cli.documento}` : '');
+  const end = l.contratanteEndereco || [cli.endereco, cli.cidade].filter(Boolean).join(' ');
+  const linhas = (t) => String(t || '').split('\n').map((x) => x.trim()).filter(Boolean);
+  // Formas da marca: dois losangos de cantos arredondados (laranja em cima, verde embaixo) e o encontro em verde escuro.
+  const losango = (cy) => `<rect x="${-25 - 77.8}" y="${cy - 77.8}" width="155.6" height="155.6" rx="26" transform="rotate(45 -25 ${cy})"/>`;
+  return `<div class="doc cert-pg"><style>@page { size: A4 landscape; margin: 0; }</style>
+    <svg class="cert-formas" viewBox="0 0 297 210" preserveAspectRatio="none" aria-hidden="true">
+      <defs><clipPath id="cert-clip">${losango(40)}</clipPath></defs>
+      <g fill="#f15a22">${losango(40)}</g><g fill="#7ac943">${losango(162)}</g>
+      <g fill="#2a5a26" clip-path="url(#cert-clip)">${losango(162)}</g>
+    </svg>
+    <div class="cert-titulo">Certificado</div>
+    <div class="cert-conteudo">
+      <div class="cert-topo"><img src="img/logo-escura.webp" alt="Berbert Pest Control" class="cert-logo">
+        <div class="cert-licencas">${linhas(l.licencas).map(esc).join('<br>')}</div></div>
+      <div class="cert-texto">
+        <p class="cert-abertura">${esc(l.abertura)}</p>
+        <ul class="cert-servicos">${linhas(l.servicos).map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
+        <p class="cert-normas">${esc(l.normas)}</p>
+        <div class="cert-contratante">Contratante:<br>${esc(nome)}${doc ? ` | ${esc(doc)}` : ''}${end ? `<br>${esc(end)}` : ''}</div>
+        <div class="cert-datas">Data de Execução ${dataExtenso(l.data)}${l.vencimento ? `<br>Data de Vencimento ${dataExtenso(l.vencimento)}` : ''}</div>
+      </div>
+      ${(l.produtos || []).length ? `<table class="cert-produtos"><thead><tr><th>GRUPO QUÍMICO</th><th>NOME COMUM</th><th>ANTÍDOTO</th><th>REG.MINISTÉRIO DA SAÚDE</th><th>EMERGÊNCIA</th></tr></thead>
+        <tbody>${l.produtos.map((p) => `<tr><td>${esc(p.grupo)}</td><td>${esc(p.nome)}</td><td>${esc(p.antidoto)}</td><td>${esc(p.registro)}</td><td>${esc(p.emergencia)}</td></tr>`).join('')}</tbody></table>` : ''}
+      <div class="cert-rodape">
+        <div class="cert-resp">${esc(l.responsavel)}${l.cargo ? `<br>${esc(l.cargo)}` : ''}${l.registro ? `<br>${esc(l.registro)}` : ''}</div>
+        <div class="cert-empresa">${l.site ? `<div class="cert-site">${esc(l.site)}</div>` : ''}${linhas(l.rodape).map(esc).join('<br>')}</div>
+      </div>
+    </div>
+  </div>`;
 }
 
 /* ---------- Laudo de caixa d'água ---------- */
@@ -385,6 +519,7 @@ async function imprimirLaudo(l) {
 }
 // HTML do laudo (o mesmo para imprimir e para o PDF do WhatsApp).
 async function documentoLaudo(l) {
+  if (l.tipo === 'certificado') return documentoCertificado(l);
   if (l.tipo === 'caixa') return documentoCaixa(l);
   const cli = DB.obter('clientes', l.clienteId);
   const cfg = DB.config();
@@ -470,9 +605,9 @@ async function gerarPdfLaudo(l) {
   try {
     await Promise.all($$('img', caixa).map((img) => (img.complete ? null : new Promise((ok) => { img.onload = img.onerror = ok; }))));
     return await window.html2pdf().set({
-      margin: [8, 8, 8, 8], image: { type: 'jpeg', quality: 0.9 },
+      margin: l.tipo === 'certificado' ? 0 : [8, 8, 8, 8], image: { type: 'jpeg', quality: 0.9 },
       html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: l.tipo === 'certificado' ? 'landscape' : 'portrait' },
       pagebreak: { mode: ['css', 'legacy'], avoid: ['figure', 'tr', '.info'] },
     }).from($('.doc', caixa)).outputPdf('blob');
   } finally {
@@ -481,10 +616,11 @@ async function gerarPdfLaudo(l) {
 }
 async function enviarLaudoWhatsApp(l, botao) {
   const cli = DB.obter('clientes', l.clienteId) || {};
-  const nomeArq = `Laudo ${l.numero} - ${String(cli.nome || 'cliente').replace(/[\\/:*?"<>|]+/g, ' ').slice(0, 60)}.pdf`;
-  const servico = l.tipo === 'caixa' ? "limpeza e desinfecção de caixa d'água" : 'dedetização';
+  const nomeArq = `${l.tipo === 'certificado' ? 'Certificado' : 'Laudo'} ${l.numero} - ${String(cli.nome || 'cliente').replace(/[\\/:*?"<>|]+/g, ' ').slice(0, 60)}.pdf`;
+  const servico = l.tipo === 'certificado' ? String(l.servicos || 'serviço').split('\n').filter(Boolean).join(' e ').toLowerCase()
+    : l.tipo === 'caixa' ? "limpeza e desinfecção de caixa d'água" : 'dedetização';
   const proxima = l.tipo === 'caixa' ? ` Próxima limpeza: ${dataBR(somarMeses(l.data, Number(l.validadeMeses) || 6))}.` : '';
-  const msg = `Olá, ${cli.contato || cli.fantasia || cli.nome || ''}! Segue o laudo nº ${l.numero} da ${servico} realizada em ${dataBR(l.data)}.${proxima} `
+  const msg = `Olá, ${cli.contato || cli.fantasia || cli.nome || ''}! Segue o ${l.tipo === 'certificado' ? 'certificado' : 'laudo'} nº ${l.numero} da ${servico} realizada em ${dataBR(l.data)}.${proxima} `
     + `${DB.config().empresa || 'Dedetizadora Berbert'}.`;
   const texto = botao.textContent;
   botao.disabled = true;

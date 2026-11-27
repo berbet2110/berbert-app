@@ -500,3 +500,28 @@ td.num, th.num { text-align: right; }
 [data-tema="escuro"] .assinatura-caixa, [data-tema="escuro"] .assinatura-ver { background: #fff; }
 [data-tema="escuro"] .doc, [data-tema="escuro"] .pdf-temporario { background: #fff; color: #000; }
 .form textarea[name="obs"] { min-height: 180px; }
+
+/* Certificado no modelo Berbert: folha A4 deitada */
+.doc.cert-pg { position: relative; width: 297mm; height: 210mm; max-width: none; margin: 0; padding: 0; overflow: hidden; background: #fff;
+  font-family: "Inter", "Segoe UI", Arial, sans-serif; color: #1d1d1b; }
+.cert-formas { position: absolute; left: 0; top: 0; width: 297mm; height: 210mm; }
+.cert-titulo { position: absolute; left: 29mm; bottom: 13mm; transform: rotate(-90deg); transform-origin: left bottom; font-size: 24pt; color: #1d1d1b; letter-spacing: .5px; }
+.cert-conteudo { position: absolute; left: 91mm; right: 12mm; top: 11mm; bottom: 12mm; display: flex; flex-direction: column; }
+.cert-topo { display: flex; justify-content: space-between; align-items: flex-start; }
+.cert-logo { height: 17mm; width: auto; }
+.cert-licencas { width: 74mm; font-size: 8.6pt; line-height: 1.35; }
+.cert-texto { width: 118mm; margin-top: 16mm; font-size: 10pt; line-height: 1.38; }
+.cert-abertura { text-align: justify; margin: 0 0 3mm; }
+.cert-servicos { margin: 0 0 3mm; padding: 0; list-style: none; }
+.cert-servicos li::before { content: "-"; display: inline-block; width: 7mm; }
+.cert-normas { margin: 0 0 7mm 43mm; font-size: 8.6pt; line-height: 1.38; text-align: justify; }
+.cert-contratante { margin-bottom: 6mm; }
+.cert-datas { text-align: right; font-size: 9.6pt; }
+.doc .cert-produtos { width: 100%; margin-top: 7mm; border-collapse: collapse; font-size: 6.8pt; line-height: 1.25; }
+.doc .cert-produtos th, .doc .cert-produtos td { border: 0; background: none; padding: 0 2mm 0 0; text-align: left; font-weight: 400; vertical-align: top; }
+.doc .cert-produtos th { padding-bottom: .6mm; font-size: inherit; color: inherit; }
+.cert-rodape { margin-top: auto; display: flex; justify-content: space-between; align-items: flex-end; gap: 10mm; }
+.cert-resp { font-size: 10pt; line-height: 1.35; }
+.cert-empresa { width: 74mm; font-size: 9pt; line-height: 1.35; }
+.cert-site { margin-bottom: 4mm; }
+@media print { body.imprimindo #impressao .cert-pg { page-break-after: avoid; } }

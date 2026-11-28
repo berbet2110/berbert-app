@@ -523,7 +523,7 @@ setInterval(async () => {
 
 // Avisa quando uma versão nova do sistema foi publicada, para ninguém usar uma versão antiga
 // (uma aba aberta continua com a versão de quando foi carregada).
-const VERSAO_APP = '2026-11-28.1';
+const VERSAO_APP = '2026-11-28.2';
 async function verificarVersao() {
   try {
     const r = await fetch('versao.json', { cache: 'no-store' });
@@ -2932,6 +2932,7 @@ function configuracoes(el) {
    ===================================================================== */
 function mostrarTela(id) {
   ['carregando', 'tela-login', 'tela-aviso', 'app'].forEach((t) => ($('#' + t).hidden = t !== id));
+  if (id === 'tela-login') conferirPrimeiroAcesso().catch(() => {});
 }
 function mostrarAviso(html) {
   $('#aviso-texto').innerHTML = html;
@@ -2975,6 +2976,31 @@ $('#form-login').addEventListener('submit', async (e) => {
     botao.disabled = false;
     botao.textContent = 'Entrar';
   }
+});
+
+// Primeiro acesso: só aparece enquanto o sistema não tem nenhum usuário.
+async function conferirPrimeiroAcesso() {
+  $('#abrir-primeiro').hidden = !(await DB.semUsuarios());
+}
+$('#abrir-primeiro').addEventListener('click', () => { $('#form-login').hidden = true; $('#form-primeiro').hidden = false; });
+$('#voltar-login').addEventListener('click', () => { $('#form-primeiro').hidden = true; $('#form-login').hidden = false; });
+$('#form-primeiro').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const d = lerForm(e.target);
+  const erro = $('#primeiro-erro');
+  erro.hidden = true;
+  await enviando($('button.btn:not(.sec)', e.target), async () => {
+    try {
+      if (!(await DB.semUsuarios())) throw new Error('O sistema já tem um administrador. Entre com o seu login ou peça um ao administrador.');
+      const perfil = await DB.criarPrimeiroAdmin(d.nome, d.email, d.senha);
+      e.target.reset();
+      $('#form-primeiro').hidden = true; $('#form-login').hidden = false; $('#abrir-primeiro').hidden = true;
+      await entrarNoApp(perfil);
+    } catch (err) {
+      erro.textContent = DB.traduzirErro(err);
+      erro.hidden = false;
+    }
+  });
 });
 
 async function sair() {

@@ -152,6 +152,16 @@ const DB = (() => {
       if (error) throw new Error(traduzirErro(error));
       return carregarPerfil();
     },
+    // Primeiro acesso: sem nenhum usuário, a primeira conta criada vira administradora (regra do banco).
+    async semUsuarios() {
+      const { data, error } = await sb.rpc('sistema_sem_usuarios');
+      return !error && data === true;
+    },
+    async criarPrimeiroAdmin(nome, email, senha) {
+      const { error } = await sb.auth.signUp({ email, password: senha, options: { data: { nome } } });
+      if (error) throw new Error(traduzirErro(error));
+      return this.entrar(email, senha);
+    },
     async sair() {
       await sb.auth.signOut();
       perfil = null;

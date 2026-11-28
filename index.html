@@ -21,6 +21,17 @@
       <label>Senha<input type="password" name="senha" autocomplete="current-password" required></label>
       <div class="erro" id="login-erro" hidden></div>
       <button class="btn">Entrar</button>
+      <button type="button" class="btn sec" id="abrir-primeiro" hidden>Primeiro acesso: criar a conta do administrador</button>
+    </form>
+    <form class="login-cartao" id="form-primeiro" hidden>
+      <img src="img/logo-escura.webp" alt="Berbert Pest Control" class="login-logo">
+      <p class="ajuda" style="margin:0">O sistema ainda não tem nenhum usuário. Esta conta será a do <b>administrador</b>, que depois cadastra os funcionários.</p>
+      <label>Seu nome<input name="nome" autocomplete="name" required></label>
+      <label>E-mail<input type="email" name="email" autocomplete="username" required></label>
+      <label>Senha (mínimo 6 caracteres)<input type="password" name="senha" autocomplete="new-password" minlength="6" required></label>
+      <div class="erro" id="primeiro-erro" hidden></div>
+      <button class="btn">Criar conta e entrar</button>
+      <button type="button" class="btn sec" id="voltar-login">Voltar</button>
     </form>
   </div>
 

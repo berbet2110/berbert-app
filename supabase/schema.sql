@@ -283,6 +283,13 @@ $fn$;
 
 grant execute on function public.ultimos_servicos() to authenticated;
 
+-- Primeiro acesso: diz à tela de login se o sistema ainda não tem nenhum usuário
+-- (só então aparece a opção de criar a conta do administrador).
+create or replace function public.sistema_sem_usuarios() returns boolean
+language sql stable security definer set search_path = public
+as $$ select not exists (select 1 from perfis) $$;
+grant execute on function public.sistema_sem_usuarios() to anon, authenticated;
+
 -- ============================================================
 -- FIM DO ARQUIVO. Se esta linha aparece no editor, o texto foi copiado inteiro.
 -- ============================================================

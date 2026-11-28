@@ -523,7 +523,7 @@ setInterval(async () => {
 
 // Avisa quando uma versão nova do sistema foi publicada, para ninguém usar uma versão antiga
 // (uma aba aberta continua com a versão de quando foi carregada).
-const VERSAO_APP = '2026-11-28.2';
+const VERSAO_APP = '2026-11-28.3';
 async function verificarVersao() {
   try {
     const r = await fetch('versao.json', { cache: 'no-store' });
@@ -2857,10 +2857,49 @@ function baixarBackup() {
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
+// Certificado digital A1 da empresa (usado para emitir as notas fiscais). O arquivo e a senha vão direto
+// para o cofre do servidor; a tela só mostra o resumo (titular, CNPJ e validade).
+async function painelCertificado(caixa) {
+  const desenhar = (cert, erro) => {
+    const dias = cert ? Math.floor((new Date(cert.validoAte) - Date.now()) / 86400000) : 0;
+    caixa.innerHTML = `<h3>Nota fiscal — certificado digital A1</h3>
+      ${erro ? `<p class="erro">${esc(erro)}</p>` : ''}
+      ${cert ? `<div class="info-cert">
+          <div><b>${esc(cert.nome)}</b>${cert.cnpj ? ` — CNPJ ${esc(cert.cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5'))}` : ''}</div>
+          <div>Válido até <b>${dataBR(cert.validoAte.slice(0, 10))}</b>
+            ${dias < 0 ? '<span class="tag vermelho">vencido</span>' : dias <= 30 ? `<span class="tag amarelo">vence em ${dias} dia(s)</span>` : '<span class="tag verde">em dia</span>'}</div>
+          <div class="ajuda" style="margin:0">Emitido por ${esc(cert.emissor || '—')} · enviado em ${dataBR(String(cert.enviadoEm || '').slice(0, 10))}</div>
+        </div>` : '<p class="ajuda">Nenhum certificado enviado. Ele é necessário para emitir notas fiscais.</p>'}
+      ${DB.perfil().admin ? `<form class="form" id="form-cert-a1">
+          <label>Arquivo do certificado (.pfx ou .p12)<input type="file" name="arquivo" accept=".pfx,.p12,application/x-pkcs12" required></label>
+          <label>Senha do certificado<input type="password" name="senha" autocomplete="new-password" required></label>
+          <p class="ajuda full" style="margin:0">O arquivo e a senha vão direto para o cofre do servidor da empresa (criptografados). Eles não ficam no navegador nem aparecem para ninguém.</p>
+          <div class="form-acoes"><button class="btn">${cert ? 'Trocar certificado' : 'Enviar certificado'}</button></div>
+        </form>` : ''}`;
+    const form = $('#form-cert-a1', caixa);
+    if (form) form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      enviando($('button', form), async () => {
+        const arq = form.arquivo.files[0];
+        const bytes = new Uint8Array(await arq.arrayBuffer());
+        let bin = '';
+        for (let i = 0; i < bytes.length; i += 32768) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 32768));
+        try {
+          const r = await DB.fiscal('certificado-enviar', { pfx: btoa(bin), senha: form.senha.value });
+          avisar('Certificado guardado no cofre.');
+          desenhar(r.certificado);
+        } catch (err) { desenhar(cert, err.message); }
+      });
+    });
+  };
+  try { desenhar((await DB.fiscal('certificado-info')).certificado); } catch (err) { desenhar(null, 'Não foi possível consultar o certificado: ' + err.message); }
+}
+
 function configuracoes(el) {
   const c = DB.config();
   el.innerHTML = `
     <div class="cabecalho"><h2>Configurações</h2></div>
+    <div class="cartao" id="cartao-certificado"><h3>Nota fiscal — certificado digital A1</h3><div class="vazio">Carregando...</div></div>
     <div class="cartao"><h3>Dados da empresa (aparecem nas ordens de serviço e laudos)</h3>
       <form class="form" id="form-cfg">
         ${campo('Nome da empresa', 'empresa', c.empresa || 'Dedetizadora Berbert', 'text', 'full')}
@@ -2894,6 +2933,7 @@ function configuracoes(el) {
         <button class="btn" id="exportar">Baixar backup</button>
         <label class="btn sec">Restaurar / importar backup<input type="file" id="importar" accept="application/json,.json" hidden></label>
       </div></div>`;
+  painelCertificado($('#cartao-certificado', el));
   $('#form-cfg', el).addEventListener('submit', (e) => {
     e.preventDefault();
     const dados = lerForm(e.target);

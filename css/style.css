@@ -534,3 +534,4 @@ td.num, th.num { text-align: right; }
 .campo-data-btn:hover { color: var(--primaria); background: var(--fundo); }
 .campo-data-btn:disabled { display: none; }
 .campo-data-seletor { position: absolute; right: 0; bottom: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; border: 0; padding: 0; }
+.info-cert { display: grid; gap: 4px; margin-bottom: 12px; padding: 12px; border: 1px solid var(--borda); border-radius: 8px; }

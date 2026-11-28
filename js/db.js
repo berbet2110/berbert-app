@@ -171,6 +171,16 @@ const DB = (() => {
       config = {};
       catalogos = { servicos: [], colaboradores: [], produtos: [] };
     },
+    // Funções do servidor para nota fiscal (supabase/functions/fiscal).
+    async fiscal(acao, dados = {}) {
+      const { data, error } = await sb.functions.invoke('fiscal', { body: { acao, ...dados } });
+      if (error) {
+        let msg = error.message;
+        try { msg = (await error.context.json()).erro || msg; } catch { /* sem detalhe */ }
+        throw new Error(msg);
+      }
+      return data;
+    },
     async alterarMinhaSenha(senha) {
       const { error } = await sb.auth.updateUser({ password: senha });
       if (error) throw new Error(traduzirErro(error));

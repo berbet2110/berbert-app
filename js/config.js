@@ -3,6 +3,6 @@
 // A chave publishable/anon pode ficar aqui: o acesso aos dados é protegido
 // pelo login e pelas regras de permissão do banco (supabase/schema.sql).
 window.BERBERT_CONFIG = {
-  supabaseUrl: 'https://jtvartevxtpsqezcmvfj.supabase.co',
-  supabaseAnonKey: 'sb_publishable_WcZK_f8mk6QVh1c5xeu-VA_9vFTnkuK',
+  supabaseUrl: 'https://igqasilxiceywdvbkouk.supabase.co',
+  supabaseAnonKey: 'sb_publishable_md7Jb6z-6A6XeRfkY-ypJg_sQqpWUoq',
 };
